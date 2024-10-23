@@ -50,3 +50,104 @@ public static string Encrypt(string clearText)
         }
 
 **************************************************************EndDecrypt***********************************************************************
+
+**************************************************************Encrypt***********************************************************************
+private readonly IConfiguration _configuration;
+public DESEncrypt(IConfiguration configuration) { _configuration = configuration; }
+
+ public string Encrypt(string Text)
+ {
+     try
+     {
+         string str3;
+         string s = "1234123456785678";
+         byte[] bytes = Encoding.UTF8.GetBytes(Text);
+         string str2 = (string)_configuration["AppSettings:AESIV"];
+         byte[] buffer = Encoding.UTF8.GetBytes(str2);
+         using (AesCryptoServiceProvider provider = new AesCryptoServiceProvider())
+         {
+             provider.BlockSize = 0x80;
+             provider.KeySize = 0x100;
+             provider.IV = Encoding.UTF8.GetBytes(s);
+             provider.Key = Encoding.UTF8.GetBytes(str2);
+             provider.Mode = CipherMode.ECB;
+             provider.Padding = PaddingMode.PKCS7;
+             provider.Clear();
+             StringBuilder builder = new StringBuilder();
+             byte[] buffer4 = provider.CreateEncryptor(provider.Key, provider.IV).TransformFinalBlock(bytes, 0, bytes.Length);
+             int index = 0;
+             while (true)
+             {
+                 if (index >= buffer4.Length)
+                 {
+                     str3 = builder.ToString();
+                     break;
+                 }
+                 builder.Append(buffer4[index].ToString("X2"));
+                 index++;
+             }
+         }
+         return str3;
+     }
+     catch
+     {
+     }
+     return string.Empty;
+ }
+
+appsetting.json:
+ "AppSettings": {
+   "AESIV": "90905EBC0B80BF5EF7F78C9125686D3B"
+ },
+**************************************************************EndEncrypt***********************************************************************
+
+
+**************************************************************Decrypt***********************************************************************
+
+public string Decrypt(string Text)
+{
+   
+    try
+    {
+        string str4;
+        string s = "1234123456785678";
+        byte[] inArray = new byte[Text.Length / 2];
+        int index = 0;
+        while (true)
+        {
+            if (index >= inArray.Length)
+            {
+                byte[] inputBuffer = Convert.FromBase64String(Convert.ToBase64String(inArray));
+                string str3 = (string)_configuration["AppSettings:AESIV"];
+                using (AesCryptoServiceProvider provider = new AesCryptoServiceProvider())
+                {
+                    provider.BlockSize = 0x80;
+                    provider.KeySize = 0x100;
+                    provider.IV = Encoding.UTF8.GetBytes(s);
+                    provider.Key = Encoding.UTF8.GetBytes(str3);
+                    provider.Mode = CipherMode.ECB;
+                    provider.Padding = PaddingMode.PKCS7;
+                    using (ICryptoTransform transform = provider.CreateDecryptor(provider.Key, provider.IV))
+                    {
+                        byte[] source = transform.TransformFinalBlock(inputBuffer, 0, inputBuffer.Length);
+                        str4 = Encoding.UTF8.GetString(source.ToArray<byte>());
+                    }
+                }
+                break;
+            }
+            inArray[index] = Convert.ToByte(Text.Substring(index * 2, 2), 0x10);
+            index++;
+        }
+        if (!string.IsNullOrEmpty(str4))
+            return str4;
+        else
+            return Text;
+    }
+    catch
+    {
+        return Text;
+    }
+    return string.Empty;
+}
+
+**************************************************************EndDecrypt***********************************************************************
